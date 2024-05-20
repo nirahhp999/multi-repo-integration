@@ -1,6 +1,6 @@
 def repoUrl = ''
 pipeline {
-    agent any
+    agent { label "master" }
 
     parameters {
         choice(
