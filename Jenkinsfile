@@ -80,6 +80,7 @@ pipeline {
 
                     dir("${env.TARGET_DIR}") {
                         echo "Building ${params.REPO} from branch ${params.BRANCH}, ${env.REPO_URL}"
+                        sh "ls -ltrh ${env.TARGET_DIR}"
                         // Add your build steps here
                     }
                 }
@@ -95,6 +96,7 @@ pipeline {
 
                     dir("${env.TARGET_DIR}") {
                         echo "Testing ${params.REPO}"
+                        sh "ls -ltrh ${env.TARGET_DIR}"
                         // Add your test steps here
                     }
                 }
@@ -110,6 +112,7 @@ pipeline {
 
                     dir("${env.TARGET_DIR}") {
                         echo "Deploying ${params.REPO}"
+                        sh "ls -ltrh ${env.TARGET_DIR}"
                         // Add your deploy steps here
                     }
                 }
