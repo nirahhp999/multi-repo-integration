@@ -26,7 +26,8 @@ pipeline {
                 script {
                     def repoUrl = ''
                     def targetDir = params.REPO
-                    
+
+                    // Determine the repository URL
                     if (params.REPO == 'Repo1') {
                         repoUrl = env.REPO1_URL
                     } else if (params.REPO == 'Repo2') {
@@ -41,12 +42,18 @@ pipeline {
 
                     // Clean up workspace
                     step([$class: 'WsCleanup'])
-                    
+
                     // Clone the repository into the specific folder
                     dir(targetDir) {
-                        git url: repoUrl, branch: params.BRANCH, credentialsId: 'github-token-harish'
+                        try {
+                            git url: repoUrl, branch: params.BRANCH, credentialsId: 'github-token-harish'
+                        } catch (Exception e) {
+                            echo "Error during git clone: ${e.message}"
+                            currentBuild.result = 'FAILURE'
+                            error("Failed to clone repository")
+                        }
                     }
-                    
+
                     // Save repoUrl and targetDir in environment variables for use in subsequent stages
                     env.REPO_URL = repoUrl
                     env.TARGET_DIR = targetDir
@@ -56,27 +63,45 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir("${env.TARGET_DIR}") {
-                    echo "Building ${params.REPO} from branch ${params.BRANCH}, ${env.REPO_URL}"
-                    // Add your build steps here
+                script {
+                    if (env.TARGET_DIR == null) {
+                        error("Target directory is not set")
+                    }
+
+                    dir("${env.TARGET_DIR}") {
+                        echo "Building ${params.REPO} from branch ${params.BRANCH}, ${env.REPO_URL}"
+                        // Add your build steps here
+                    }
                 }
             }
         }
 
         stage('Test') {
             steps {
-                dir("${env.TARGET_DIR}") {
-                    echo "Testing ${params.REPO}"
-                    // Add your test steps here
+                script {
+                    if (env.TARGET_DIR == null) {
+                        error("Target directory is not set")
+                    }
+
+                    dir("${env.TARGET_DIR}") {
+                        echo "Testing ${params.REPO}"
+                        // Add your test steps here
+                    }
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                dir("${env.TARGET_DIR}") {
-                    echo "Deploying ${params.REPO}"
-                    // Add your deploy steps here
+                script {
+                    if (env.TARGET_DIR == null) {
+                        error("Target directory is not set")
+                    }
+
+                    dir("${env.TARGET_DIR}") {
+                        echo "Deploying ${params.REPO}"
+                        // Add your deploy steps here
+                    }
                 }
             }
         }
