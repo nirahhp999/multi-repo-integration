@@ -48,11 +48,18 @@ pipeline {
                     //     returnStatus: true
                     // )
                     // Verify branch existence
-                    def branchCheckCmd = "git ls-remote --heads ${repoUrl} refs/heads/${params.BRANCH}"
-                    echo "Running command: ${branchCheckCmd}"
-                    def branchExists = sh(script: branchCheckCmd, returnStdout: true).trim()
-                    if (branchExists != 0) {
-                        error("Branch ${params.BRANCH} does not exist in repository ${repoUrl}")
+                    // Verify branch existence with credentials
+                    withCredentials([usernamePassword(credentialsId: 'github-token-harish', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                        def authRepoUrl = repoUrl.replace('https://', "https://${GIT_USERNAME}:${GIT_PASSWORD}@")
+                        def branchCheckCmd = "git ls-remote --heads ${authRepoUrl} refs/heads/${params.BRANCH}"
+                        echo "Running command: ${branchCheckCmd}"
+                        def branchExists = sh(script: branchCheckCmd, returnStdout: true).trim()
+
+                        if (branchExists == '') {
+                            error("Branch ${params.BRANCH} does not exist in repository ${repoUrl}")
+                        } else {
+                            echo "Branch exists: ${branchExists}"
+                        }
                     }
 
                     // Clone the repository into the specific folder
