@@ -23,6 +23,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                // Clean up workspace
+                step([$class: 'WsCleanup'])
                 script {
                     def repoUrl = ''
                     def targetDir = params.REPO
@@ -39,9 +41,6 @@ pipeline {
                     }
 
                     echo "Cloning ${repoUrl} branch ${params.BRANCH} into ${targetDir}"
-
-                    // Clean up workspace
-                    step([$class: 'WsCleanup'])
 
                     // Verify branch existence
                     def branchExists = sh (
