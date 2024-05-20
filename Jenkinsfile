@@ -43,11 +43,14 @@ pipeline {
                     echo "Cloning ${repoUrl} branch ${params.BRANCH} into ${targetDir}"
 
                     // Verify branch existence
-                    def branchExists = sh (
-                        script: "git ls-remote --heads ${repoUrl} ${params.BRANCH}",
-                        returnStatus: true
-                    )
-
+                    // def branchExists = sh (
+                    //     script: "git ls-remote --heads ${repoUrl} ${params.BRANCH}",
+                    //     returnStatus: true
+                    // )
+                    // Verify branch existence
+                    def branchCheckCmd = "git ls-remote --heads ${repoUrl} refs/heads/${params.BRANCH}"
+                    echo "Running command: ${branchCheckCmd}"
+                    def branchExists = sh(script: branchCheckCmd, returnStdout: true).trim()
                     if (branchExists != 0) {
                         error("Branch ${params.BRANCH} does not exist in repository ${repoUrl}")
                     }
