@@ -43,6 +43,16 @@ pipeline {
                     // Clean up workspace
                     step([$class: 'WsCleanup'])
 
+                    // Verify branch existence
+                    def branchExists = sh (
+                        script: "git ls-remote --heads ${repoUrl} ${params.BRANCH}",
+                        returnStatus: true
+                    )
+
+                    if (branchExists != 0) {
+                        error("Branch ${params.BRANCH} does not exist in repository ${repoUrl}")
+                    }
+
                     // Clone the repository into the specific folder
                     dir(targetDir) {
                         try {
