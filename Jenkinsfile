@@ -1,4 +1,3 @@
-def repoUrl = ''
 pipeline {
     agent { label "master" }
     
@@ -24,12 +23,9 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                step([$class: 'WsCleanup'])
-                checkout scm
-                sh "ls -ltrh ${WORKSPACE}"
                 script {
-                    // def repoUrl = ''    
-                    def targetDir = "${params.REPO}"
+                    def repoUrl = ''
+                    def targetDir = params.REPO
                     
                     if (params.REPO == 'Repo1') {
                         repoUrl = env.REPO1_URL
@@ -43,18 +39,25 @@ pipeline {
 
                     echo "Cloning ${repoUrl} branch ${params.BRANCH} into ${targetDir}"
 
+                    // Clean up workspace
+                    step([$class: 'WsCleanup'])
+                    
                     // Clone the repository into the specific folder
                     dir(targetDir) {
-                        git url: repoUrl, branch: params.BRANCH, credentialsId: 'github-token-harish' 
+                        git url: repoUrl, branch: params.BRANCH, credentialsId: 'github-token-harish'
                     }
+                    
+                    // Save repoUrl and targetDir in environment variables for use in subsequent stages
+                    env.REPO_URL = repoUrl
+                    env.TARGET_DIR = targetDir
                 }
             }
         }
 
         stage('Build') {
             steps {
-                dir('repository') {
-                    echo "Building ${params.REPO} from branch ${params.BRANCH}, ${repoUrl}"
+                dir("${env.TARGET_DIR}") {
+                    echo "Building ${params.REPO} from branch ${params.BRANCH}, ${env.REPO_URL}"
                     // Add your build steps here
                 }
             }
@@ -62,7 +65,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                dir('repository') {
+                dir("${env.TARGET_DIR}") {
                     echo "Testing ${params.REPO}"
                     // Add your test steps here
                 }
@@ -71,7 +74,7 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                dir('repository') {
+                dir("${env.TARGET_DIR}") {
                     echo "Deploying ${params.REPO}"
                     // Add your deploy steps here
                 }
