@@ -2,8 +2,6 @@ def repoUrl = ''
 pipeline {
     agent { label "master" }
     
-    tools { git "Default" }
-
     parameters {
         choice(
             name: 'REPO',
