@@ -1,0 +1,115 @@
+pipeline {
+    agent { label 'master' }
+    
+    parameters {
+        choice(name: 'repository', choices: '', description: 'Select a repository to clone')
+        choice(name: 'CD_BRANCH', choices: ['master', 'main'], description: 'Select a branch to build')
+        string(name: 'GITHUB_ORG', defaultValue: 'orgname', description: 'GitHub organization to scan')
+    }
+    environment{
+        TARGET_DIR = "repository"
+    }
+    
+    stages {
+        stage('Fetch All Repos From ORG') {
+            steps {
+                script {
+                    // Use withCredentials to securely handle the GitHub token
+                    def RepoUrl = "https://api.github.com/orgs/${params.GITHUB_ORG}/repos"
+                    withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                        def authRepoUrl = RepoUrl.replace('https://', "https://${GIT_USERNAME}:${GIT_PASSWORD}@")
+                        // def branchCheckCmd = "git ls-remote --heads ${authRepoUrl} refs/heads/${params.BRANCH}"
+                        echo "Running command: ${authRepoUrl}"
+                        sh "curl ${authRepoUrl} | jq -r '.[].clone_url' >  repos.txt "
+                        // def branchExists = sh(script: branchCheckCmd, returnStdout: true).trim()
+                    }
+                }
+            }
+        }
+        stage('Select Repository') {
+            steps {
+                script {
+                    // Read repository names from repos.txt
+                    def repoNames = []
+                    def fileContent = readFile('repos.txt')
+                    echo "File content: ${fileContent}"
+                    fileContent.eachLine { line ->
+                        echo "Reading line: ${line}"
+                        repoNames.add(line.trim())
+                    }
+
+                    // Ensure repoNames are correctly printed for debugging
+                    echo "Repositories: ${fileContent}"
+
+                     // Use input step to present choices to the user
+                    def selectedRepo = input message: 'Select a repository to clone', parameters: [
+                        choice(name: 'repository', choices: fileContent, description: 'Select a repository to clone')
+                    ]
+
+                    echo "Selected Repo: ${selectedRepo}"
+                    // Store the selected repository in an environment variable for the next stage
+                    env.SELECTED_REPO = selectedRepo
+                    
+                    // Extract repository name from the selected repository URL
+                    def repoName = selectedRepo.split('/').last().replace('.git', '')
+                    echo "Extracted Repository Name: ${repoName}"
+                    // Store the repository name in an environment variable
+                    env.IMAGE_NAME = repoName
+                    echo "Docker image name is:: ${env.IMAGE_NAME}"
+                }
+            }
+        }
+        stage('Fetch Branches') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'github-token-harish', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                        def authRepoUrl = env.SELECTED_REPO.replace('https://', "https://${GIT_USERNAME}:${GIT_PASSWORD}@")
+                        def branchListCmd = "git ls-remote --heads ${authRepoUrl}"
+                        echo "Running command: ${branchListCmd}"
+                        def branches = sh(script: branchListCmd, returnStdout: true).trim()
+                        def branchNames = branches.split('\n').collect { it.split()[1].replace('refs/heads/', '') }
+                        
+                        // Ensure branchNames are correctly printed for debugging
+                        echo "Branches: ${branchNames}"
+
+                        // Use input step to present branch choices to the user
+                        def selectedBranch = input message: 'Select a branch to clone', parameters: [
+                            choice(name: 'branch', choices: branchNames.join('\n'), description: 'Select a branch to clone')
+                        ]
+
+                        echo "Selected Branch: ${selectedBranch}"
+                        // Store the selected branch in an environment variable for the next stage
+                        env.SELECTED_BRANCH = selectedBranch
+                    }
+                }
+            }
+        }
+
+        stage('Clone Repository') {
+            steps {
+                script {
+                    // Get the selected repository
+                    def selectedRepo = env.SELECTED_REPO
+                    def selectedBranch = env.SELECTED_BRANCH
+                    if(selectedRepo == ''){
+                        error("Repository is not selected")
+                    } else {
+                    // Clone the selected repository
+                        echo "Selected Repository: ${selectedRepo}"
+                     // Clone the repository into the specific folder
+                        dir("${env.TARGET_DIR}") {
+                            try {
+                                git url: selectedRepo, branch: selectedBranch, credentialsId: 'github-token'
+                                sh "ls -ltrh"
+                            } catch (Exception e) {
+                                echo "Error during git clone: ${e.message}"
+                                currentBuild.result = 'FAILURE'
+                                error("Failed to clone repository")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
