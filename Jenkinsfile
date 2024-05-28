@@ -49,7 +49,7 @@ pipeline {
                     // )
                     // Verify branch existence
                     // Verify branch existence with credentials
-                    withCredentials([usernamePassword(credentialsId: 'github-token-harish', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                    withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
                         def authRepoUrl = repoUrl.replace('https://', "https://${GIT_USERNAME}:${GIT_PASSWORD}@")
                         def branchCheckCmd = "git ls-remote --heads ${authRepoUrl} refs/heads/${params.BRANCH}"
                         echo "Running command: ${branchCheckCmd}"
